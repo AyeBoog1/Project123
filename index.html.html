@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Орієнтир v3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #0c0e11; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {
+  useState,
+  useRef,
+  useEffect
+} = React;
+
+// Ukrainian field definitions (label + hint)
+const F = {
+  stat: {
+    label: "Стать",
+    hint: "чоловік / жінка"
+  },
+  vik: {
+    label: "Вік (на вигляд)",
+    hint: "підлітковий · юнацький · молодий (22–35) · середній (36–60) · похилий · старечий"
+  },
+  antrop: {
+    label: "Антропологічний тип",
+    hint: "слов'янин · кавказець · азіат · arab · циган · чорношкірий…"
+  },
+  zrist: {
+    label: "Зріст",
+    hint: "низький <165 · середній 166–175 · високий 176–185 · дуже високий >185 см"
+  },
+  statura: {
+    label: "Статура",
+    hint: "худа/щупла · середня · повна/тучна · кремезна/атлетична"
+  },
+  volossya: {
+    label: "Волосся",
+    hint: "форма (пряме/хвилясте/кучеряве) · довжина · залисини · колір (темне/світле/руде/сиве)"
+  },
+  prykmety: {
+    label: "Особливі прикмети",
+    hint: "шрами · татуювання · родимки · вади · ампутації — частина тіла, опис"
+  },
+  odyag: {
+    label: "Одяг / прикметні речі",
+    hint: "стиль (робочий/спортивний/класичний) · колір · сумка"
+  },
+  oblychchya: {
+    label: "Обличчя",
+    hint: "форма (овальне/кругле/прямокутне/трикутне/видовжене) · шкіра"
+  },
+  lob: {
+    label: "Лоб",
+    hint: "високий / середній / низький"
+  },
+  vukha: {
+    label: "Вуха",
+    hint: "великі/середні/малі · відстовбурчені / прилягаючі"
+  },
+  brovy: {
+    label: "Брови",
+    hint: "колір · ширина (широкі/вузькі) · густі/зрослись"
+  },
+  ochi: {
+    label: "Очі",
+    hint: "величина · колір (чорні/карі/сірі/блакитні/зелені) · косоокість"
+  },
+  nis: {
+    label: "Ніс",
+    hint: "з горбинкою · прямий · курносий · приплюснутий · задертий"
+  },
+  rot_huby: {
+    label: "Рот / губи",
+    hint: "рот (великий/середній/малий) · губи (товсті/середні/тонкі)"
+  },
+  zuby: {
+    label: "Зуби",
+    hint: "рідкі/криві/щербаті · коронки · відсутні передні"
+  },
+  pidboriddya: {
+    label: "Підборіддя",
+    hint: "пряме / виступаюче / скошене / роздвоєне"
+  },
+  rosl: {
+    label: "Вуса / борода",
+    hint: "є/немає · розмір (великі/середні/малі)"
+  },
+  shyya: {
+    label: "Шия",
+    hint: "довга/середня/коротка · товста/тонка · кадик"
+  },
+  plechi: {
+    label: "Плечі",
+    hint: "вузькі/середні/широкі · опущені/горизонтальні/підняті"
+  },
+  ruky: {
+    label: "Руки / кисті",
+    hint: "довжина · кисті (грубі/ніжні/чисті/брудні)"
+  },
+  spyna: {
+    label: "Постава / спина",
+    hint: "пряма / сутула / горб"
+  },
+  nohy: {
+    label: "Ноги",
+    hint: "прямі / О-подібні / Х-подібні"
+  },
+  khoda: {
+    label: "Хода",
+    hint: "пряма / шаркання / кульгавість / перевалюючись"
+  },
+  mova: {
+    label: "Мова / голос",
+    hint: "акцент · заїкання · картавість · жаргон"
+  },
+  zvychky: {
+    label: "Звички / манери",
+    hint: "паління · жестикуляція · шульга"
+  },
+  dodatk: {
+    label: "Окуляри / інше",
+    hint: "окуляри · слуховий апарат · перука · ціпок"
+  }
+};
+
+// English labels used to build the BFL prompt
+const E = {
+  stat: "gender",
+  vik: "apparent age",
+  antrop: "ethnic appearance",
+  zrist: "height",
+  statura: "body build",
+  volossya: "hair",
+  prykmety: "distinguishing marks",
+  odyag: "clothing",
+  oblychchya: "face shape",
+  lob: "forehead",
+  vukha: "ears",
+  brovy: "eyebrows",
+  ochi: "eyes",
+  nis: "nose",
+  rot_huby: "mouth and lips",
+  zuby: "teeth",
+  pidboriddya: "chin",
+  rosl: "facial hair",
+  shyya: "neck",
+  plechi: "shoulders",
+  ruky: "hands",
+  spyna: "posture",
+  nohy: "legs",
+  khoda: "gait",
+  mova: "speech",
+  zvychky: "habits",
+  dodatk: "accessories"
+};
+const EXPRESS_KEYS = ["stat", "vik", "antrop", "zrist", "statura", "volossya", "prykmety", "odyag"];
+const DETAILED_GROUPS = [{
+  g: "Загально-фізичні (обов'язкові)",
+  keys: ["stat", "vik", "antrop"]
+}, {
+  g: "Голова та обличчя",
+  keys: ["zrist", "statura", "volossya", "oblychchya", "lob", "vukha", "brovy", "ochi", "nis", "rot_huby", "zuby", "pidboriddya", "rosl"]
+}, {
+  g: "Будова тіла",
+  keys: ["shyya", "plechi", "ruky", "spyna", "nohy"]
+}, {
+  g: "Особливі прикмети",
+  keys: ["prykmety"]
+}, {
+  g: "Функціональні",
+  keys: ["khoda", "mova", "zvychky"]
+}, {
+  g: "Постійні",
+  keys: ["odyag", "dodatk"]
+}];
+const activeKeys = mode => mode === "express" ? EXPRESS_KEYS : DETAILED_GROUPS.flatMap(g => g.keys);
+const buildPrompt = (keys, values) => {
+  const filled = keys.filter(k => values[k] && values[k].trim());
+  if (!filled.length) return "";
+  const desc = filled.map(k => `${E[k]}: ${values[k]}`).join(", ");
+  return `photorealistic forensic frontal portrait composite, neutral plain background, no text, highly detailed face. ${desc}`;
+};
+
+// Pollinations image API config
+const POLLI_ENDPOINT = "https://gen.pollinations.ai/image/";
+const IMG_MODELS = [{
+  id: "flux",
+  label: "Flux",
+  sub: "фотореалізм"
+}, {
+  id: "gptimage",
+  label: "GPT Image",
+  sub: "точні деталі"
+}, {
+  id: "seedream",
+  label: "Seedream",
+  sub: "обличчя"
+}, {
+  id: "nanobanana",
+  label: "Nano Banana",
+  sub: "Gemini"
+}];
+const C = {
+  bg: "#0c0e11",
+  panel: "#14181e",
+  panel2: "#191e25",
+  border: "#2a313b",
+  text: "#e9e7e1",
+  mut: "#8b929c",
+  faint: "#5b626c",
+  amber: "#ff9b30",
+  amberDim: "#7a4f1c",
+  red: "#ff4646",
+  green: "#3ddc84",
+  blue: "#4aa8ff"
+};
+const btn = (bg, fg, busy) => ({
+  padding: "11px 18px",
+  border: "none",
+  borderRadius: 4,
+  cursor: busy ? "wait" : "pointer",
+  background: bg,
+  color: fg,
+  fontFamily: "'Oswald',sans-serif",
+  fontWeight: 600,
+  fontSize: 14.5,
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 9
+});
+function Spin() {
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 14,
+      height: 14,
+      border: "2px solid #1a120544",
+      borderTopColor: "#1a1205",
+      borderRadius: "50%",
+      animation: "spin .7s linear infinite",
+      display: "inline-block",
+      flexShrink: 0
+    }
+  });
+}
+function Seg({
+  active,
+  onClick,
+  label,
+  sub,
+  C
+}) {
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    style: {
+      padding: "8px 14px",
+      borderRadius: 4,
+      cursor: "pointer",
+      border: `1px solid ${active ? C.amber : C.border}`,
+      background: active ? `${C.amber}1a` : "transparent",
+      color: active ? C.amber : C.mut,
+      fontFamily: "'Oswald',sans-serif",
+      fontSize: 13.5,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      lineHeight: 1.2
+    }
+  }, label, sub && /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontSize: 9.5,
+      letterSpacing: 1,
+      opacity: .8
+    }
+  }, sub));
+}
+function Banner({
+  C,
+  text
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: "10px 14px",
+      background: `${C.amber}10`,
+      border: `1px solid ${C.amberDim}`,
+      borderLeft: `3px solid ${C.amber}`,
+      fontSize: 12.5,
+      color: "#e7c89a",
+      lineHeight: 1.5
+    }
+  }, text);
+}
+function SectionTitle({
+  C,
+  t
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      margin: "22px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'Oswald',sans-serif",
+      fontSize: 16,
+      letterSpacing: 1.5,
+      textTransform: "uppercase",
+      color: C.text
+    }
+  }, t), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      height: 1,
+      background: C.border
+    }
+  }));
+}
+function FieldGrid({
+  C,
+  keys,
+  values,
+  setField
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
+      gap: 10
+    }
+  }, keys.map(k => {
+    const filled = values[k] && values[k].trim();
+    return /*#__PURE__*/React.createElement("div", {
+      key: k,
+      style: {
+        background: C.panel,
+        border: `1px solid ${filled ? C.amberDim : C.border}`,
+        borderRadius: 4,
+        padding: "10px 12px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'IBM Plex Mono',monospace",
+        fontSize: 10.5,
+        letterSpacing: .5,
+        color: filled ? C.amber : C.mut,
+        textTransform: "uppercase",
+        marginBottom: 5,
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        background: filled ? C.green : C.faint,
+        display: "inline-block"
+      }
+    }), F[k].label), /*#__PURE__*/React.createElement("input", {
+      value: values[k] || "",
+      onChange: e => setField(k, e.target.value),
+      placeholder: F[k].hint,
+      style: {
+        width: "100%",
+        boxSizing: "border-box",
+        background: C.bg,
+        color: C.text,
+        border: `1px solid ${C.border}`,
+        borderRadius: 3,
+        padding: "8px 9px",
+        fontSize: 13.5,
+        lineHeight: 1.4,
+        fontFamily: "'IBM Plex Sans',sans-serif",
+        outline: "none"
+      }
+    }));
+  }));
+}
+function Variant({
+  C,
+  url,
+  idx
+}) {
+  const [state, setState] = useState("loading"); // loading | done | error
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      background: C.bg,
+      border: `1px solid ${C.border}`,
+      borderRadius: 6,
+      overflow: "hidden",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 200
+    }
+  }, state === "loading" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      color: C.amber,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 11.5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: C.amber,
+      display: "inline-block",
+      animation: "blink 1s infinite"
+    }
+  }), "варіант ", idx + 1, "…"), state === "error" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 12,
+      color: C.red,
+      fontSize: 11,
+      textAlign: "center",
+      lineHeight: 1.45,
+      fontFamily: "'IBM Plex Mono',monospace"
+    }
+  }, "варіант ", idx + 1, /*#__PURE__*/React.createElement("br", null), "не завантажився"), /*#__PURE__*/React.createElement("img", {
+    src: url,
+    alt: "Варіант " + (idx + 1),
+    onLoad: () => setState("done"),
+    onError: () => setState("error"),
+    style: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      display: state === "done" ? "block" : "none",
+      animation: "imgfade .4s ease"
+    }
+  }), state === "done" && /*#__PURE__*/React.createElement("a", {
+    href: url,
+    download: "orientir-" + (idx + 1) + ".jpg",
+    target: "_blank",
+    rel: "noreferrer",
+    title: "Відкрити / зберегти",
+    style: {
+      position: "absolute",
+      bottom: 8,
+      right: 8,
+      background: C.green,
+      color: "#06121f",
+      borderRadius: 4,
+      padding: "5px 10px",
+      fontSize: 13,
+      fontWeight: 600,
+      fontFamily: "'Oswald',sans-serif",
+      letterSpacing: .5,
+      textTransform: "uppercase",
+      textDecoration: "none",
+      boxShadow: "0 2px 8px #0008"
+    }
+  }, "⬇"));
+}
+function VariantTile({
+  C,
+  item,
+  index,
+  start,
+  onSettled
+}) {
+  const [status, setStatus] = useState("queued"); // queued | loading | ok | error
+  const [src, setSrc] = useState("");
+  const triedRef = useRef(0);
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (start && status === "queued") {
+      setStatus("loading");
+      setSrc(item.url);
+    }
+  }, [start]);
+  const settle = s => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setStatus(s);
+    onSettled();
+  };
+  const handleError = () => {
+    if (triedRef.current < 1) {
+      triedRef.current += 1;
+      setTimeout(() => setSrc(item.url + "&retry=" + Date.now()), 1800); // one retry after rate-limit cooldown
+    } else {
+      settle("error");
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      background: C.panel,
+      border: `1px solid ${C.border}`,
+      borderRadius: 6,
+      overflow: "hidden"
+    }
+  }, src && /*#__PURE__*/React.createElement("img", {
+    src: src,
+    alt: `Варіант ${index + 1}`,
+    onLoad: () => settle("ok"),
+    onError: handleError,
+    style: {
+      display: status === "ok" ? "block" : "none",
+      width: "100%",
+      aspectRatio: "1 / 1",
+      objectFit: "cover"
+    }
+  }), (status === "queued" || status === "loading") && /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "100%",
+      aspectRatio: "1 / 1",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: status === "loading" ? C.amber : C.faint,
+      gap: 8,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 12
+    }
+  }, status === "loading" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Spin, null), " #", index + 1) : /*#__PURE__*/React.createElement(React.Fragment, null, "у черзі #", index + 1)), status === "error" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "100%",
+      aspectRatio: "1 / 1",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      color: C.red,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 11,
+      textAlign: "center",
+      padding: 10,
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "збій #", index + 1), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.faint,
+      fontSize: 10
+    }
+  }, "ліміт або потрібен ключ")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      left: 6,
+      top: 6,
+      padding: "2px 6px",
+      borderRadius: 3,
+      background: "rgba(0,0,0,.55)",
+      color: C.mut,
+      fontSize: 10,
+      fontFamily: "'IBM Plex Mono',monospace"
+    }
+  }, "seed ", item.seed), status === "ok" && /*#__PURE__*/React.createElement("a", {
+    href: item.url,
+    download: `orientir-${index + 1}.jpg`,
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      position: "absolute",
+      right: 6,
+      bottom: 6,
+      padding: "4px 8px",
+      borderRadius: 4,
+      background: "rgba(6,18,31,.82)",
+      border: `1px solid ${C.green}`,
+      color: C.green,
+      fontSize: 11,
+      fontFamily: "'IBM Plex Mono',monospace",
+      textDecoration: "none"
+    }
+  }, "⬇ зберегти"));
+}
+function App() {
+  const [mode, setMode] = useState("express");
+  const [values, setValues] = useState({});
+  const [promptEn, setPromptEn] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [variants, setVariants] = useState([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [count, setCount] = useState(4);
+  const [imgModel, setImgModel] = useState("flux");
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      return localStorage.getItem("orientir_polli_key") || "";
+    } catch (e) {
+      return "";
+    }
+  });
+  const [genStatus, setGenStatus] = useState("");
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [interim, setInterim] = useState("");
+  const [supported, setSupported] = useState(true);
+  const recRef = useRef(null);
+
+  // Image generation via Pollinations AI — no key required by default
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setSupported(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "uk-UA";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = e => {
+      let fin = "",
+        inter = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) fin += t + " ";else inter += t;
+      }
+      if (fin) setTranscript(p => (p + " " + fin).replace(/\s+/g, " ").trim());
+      setInterim(inter);
+    };
+    rec.onend = () => {
+      setListening(false);
+      setInterim("");
+    };
+    rec.onerror = () => {
+      setListening(false);
+      setInterim("");
+    };
+    recRef.current = rec;
+    return () => {
+      try {
+        rec.stop();
+      } catch (e) {}
+    };
+  }, []);
+  const toggleMic = () => {
+    const rec = recRef.current;
+    if (!rec) return;
+    if (listening) {
+      rec.stop();
+      setListening(false);
+    } else {
+      try {
+        rec.start();
+        setListening(true);
+      } catch (e) {}
+    }
+  };
+
+  // No API key needed
+
+  const saveKey = v => {
+    setApiKey(v);
+    try {
+      if (v.trim()) localStorage.setItem("orientir_polli_key", v.trim());else localStorage.removeItem("orientir_polli_key");
+    } catch (e) {}
+  };
+  const keyKind = apiKey.startsWith("sk_") ? "sk" : apiKey.startsWith("pk_") ? "pk" : apiKey.trim() ? "other" : null;
+  const pendingRef = useRef(0);
+  const onTileSettled = () => {
+    setActiveIdx(i => i + 1); // allow the next tile to start loading
+    pendingRef.current -= 1;
+    if (pendingRef.current <= 0) {
+      setGenerating(false);
+      setGenStatus("");
+    }
+  };
+  const doGenerate = () => {
+    const keys = activeKeys(mode);
+    const filled = keys.filter(k => values[k] && values[k].trim());
+    if (!filled.length) {
+      setError("Спершу заповніть хоча б кілька ознак.");
+      return;
+    }
+    const prompt = buildPrompt(keys, values);
+    setPromptEn(prompt);
+    setError("");
+    setVariants([]);
+    setActiveIdx(0);
+    setGenerating(true);
+    setGenStatus("");
+
+    // Pollinations: GET /image/{prompt}?model=...&width=...&height=...&seed=...
+    const base = new URLSearchParams({
+      model: imgModel,
+      width: "768",
+      height: "768"
+    });
+    if (apiKey.trim()) base.set("key", apiKey.trim());
+    const list = [];
+    for (let i = 0; i < count; i++) {
+      const seed = Math.floor(Math.random() * 1e9);
+      const p = new URLSearchParams(base);
+      p.set("seed", String(seed));
+      list.push({
+        url: `${POLLI_ENDPOINT}${encodeURIComponent(prompt)}?${p.toString()}`,
+        seed
+      });
+    }
+    // Each tile loads its own image via <img> (no CORS issues, works from file://).
+    pendingRef.current = list.length;
+    setVariants(list);
+  };
+  const setField = (k, v) => setValues(prev => ({
+    ...prev,
+    [k]: v
+  }));
+  const resetAll = () => {
+    setValues({});
+    setTranscript("");
+    setInterim("");
+    setPromptEn("");
+    setVariants([]);
+    setError("");
+  };
+  const copyPrompt = () => {
+    if (promptEn) navigator.clipboard.writeText(promptEn).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  const keys = activeKeys(mode);
+  const filledCount = keys.filter(k => values[k] && values[k].trim()).length;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: C.bg,
+      color: C.text,
+      fontFamily: "'IBM Plex Sans',sans-serif"
+    }
+  }, /*#__PURE__*/React.createElement("style", null, `
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,70,.55);}50%{box-shadow:0 0 0 16px rgba(255,70,70,0);}}
+        @keyframes spin{to{transform:rotate(360deg);}}
+        @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+        @keyframes imgfade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+        input::placeholder,textarea::placeholder{color:#5b626c;}
+        input:focus,textarea:focus{border-color:#ff9b30!important;}
+      `), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      inset: 0,
+      backgroundImage: `linear-gradient(#2a313b22 1px,transparent 1px),linear-gradient(90deg,#2a313b22 1px,transparent 1px)`,
+      backgroundSize: "44px 44px",
+      pointerEvents: "none"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      maxWidth: 880,
+      margin: "0 auto",
+      padding: "26px 18px 60px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      borderBottom: `1px solid ${C.border}`,
+      paddingBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    style: {
+      margin: 0,
+      fontFamily: "'Oswald',sans-serif",
+      fontWeight: 700,
+      fontSize: 32,
+      letterSpacing: 2,
+      textTransform: "uppercase",
+      color: C.amber
+    }
+  }, "Орієнтир"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 12,
+      color: C.mut,
+      letterSpacing: 1
+    }
+  }, "словесний портрет · v3"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 11,
+      color: C.mut,
+      letterSpacing: .5
+    }
+  }, "без API ключа")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 16
+    }
+  }, /*#__PURE__*/React.createElement(Seg, {
+    active: mode === "express",
+    onClick: () => setMode("express"),
+    label: "Патрульний",
+    sub: "мінімум",
+    C: C
+  }), /*#__PURE__*/React.createElement(Seg, {
+    active: mode === "detailed",
+    onClick: () => setMode("detailed"),
+    label: "Оперативник",
+    sub: "повний",
+    C: C
+  })), /*#__PURE__*/React.createElement(Banner, {
+    C: C,
+    text: mode === "express" ? "Патрульний: обов'язковий мінімум ознак. Заповнюйте за підказками в полях — вручну або надиктуйте та перенесіть." : "Оперативник: повна габітологічна структура. Заповнюйте за підказками — вручну або надиктуйте та перенесіть."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      background: C.panel,
+      border: `1px solid ${C.border}`,
+      borderRadius: 4,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: toggleMic,
+    disabled: !supported,
+    style: {
+      width: 54,
+      height: 54,
+      borderRadius: "50%",
+      flexShrink: 0,
+      cursor: supported ? "pointer" : "not-allowed",
+      border: `2px solid ${listening ? C.red : C.amber}`,
+      background: listening ? C.red : "transparent",
+      color: listening ? "#fff" : C.amber,
+      fontSize: 22,
+      animation: listening ? "pulse 1.4s infinite" : "none"
+    }
+  }, listening ? "■" : "🎙"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Oswald',sans-serif",
+      fontSize: 14,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      color: listening ? C.red : C.text
+    }
+  }, listening ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      animation: "blink 1s infinite"
+    }
+  }, "● Запис триває…") : supported ? "Нотатки зі слів свідка" : "Голос недоступний"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.mut,
+      marginTop: 3
+    }
+  }, supported ? "Chrome · надиктуйте, потім перенесіть у поля нижче" : "Заповніть поля нижче вручну"))), /*#__PURE__*/React.createElement("textarea", {
+    value: transcript + (interim ? " " + interim : ""),
+    onChange: e => setTranscript(e.target.value),
+    rows: 3,
+    placeholder: "Надиктуйте або впишіть опис свідка для нотаток, а потім вручну перенесіть у поля нижче…",
+    style: {
+      width: "100%",
+      marginTop: 12,
+      boxSizing: "border-box",
+      resize: "vertical",
+      background: C.bg,
+      color: C.text,
+      border: `1px solid ${C.border}`,
+      borderRadius: 4,
+      padding: 11,
+      fontSize: 14,
+      lineHeight: 1.55,
+      fontFamily: "'IBM Plex Sans',sans-serif",
+      outline: "none"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 10,
+      flexWrap: "wrap",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: resetAll,
+    style: {
+      padding: "9px 14px",
+      borderRadius: 4,
+      cursor: "pointer",
+      background: "transparent",
+      border: `1px solid ${C.border}`,
+      color: C.mut,
+      fontFamily: "'Oswald',sans-serif",
+      fontSize: 13,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, "Скинути все"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 12.5,
+      color: filledCount ? C.green : C.mut
+    }
+  }, "заповнено ", filledCount, " / ", keys.length))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 18
+    }
+  }, mode === "express" ? /*#__PURE__*/React.createElement(FieldGrid, {
+    C: C,
+    keys: EXPRESS_KEYS,
+    values: values,
+    setField: setField
+  }) : DETAILED_GROUPS.map((grp, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 11.5,
+      letterSpacing: 1,
+      color: C.blue,
+      textTransform: "uppercase",
+      margin: "12px 0 7px"
+    }
+  }, grp.g), /*#__PURE__*/React.createElement(FieldGrid, {
+    C: C,
+    keys: grp.keys,
+    values: values,
+    setField: setField
+  })))), /*#__PURE__*/React.createElement(SectionTitle, {
+    C: C,
+    t: "Генерація портрета · Pollinations"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.panel2,
+      border: `1px solid ${C.border}`,
+      borderRadius: 4,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 10.5,
+      letterSpacing: 1,
+      color: C.mut,
+      textTransform: "uppercase",
+      marginBottom: 8
+    }
+  }, "Модель"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap",
+      marginBottom: 14
+    }
+  }, IMG_MODELS.map(m => /*#__PURE__*/React.createElement(Seg, {
+    key: m.id,
+    active: imgModel === m.id,
+    onClick: () => setImgModel(m.id),
+    label: m.label,
+    sub: m.sub,
+    C: C
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 6,
+      flexWrap: "wrap",
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 10.5,
+      letterSpacing: 1,
+      color: C.mut,
+      textTransform: "uppercase"
+    }
+  }, "Ключ Pollinations"), /*#__PURE__*/React.createElement("a", {
+    href: "https://enter.pollinations.ai",
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      fontSize: 11,
+      color: C.amber,
+      fontFamily: "'IBM Plex Mono',monospace",
+      textDecoration: "none"
+    }
+  }, "отримати ключ ↗")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: apiKey,
+    onChange: e => saveKey(e.target.value),
+    placeholder: "pk_… або sk_…",
+    style: {
+      flex: 1,
+      minWidth: 220,
+      boxSizing: "border-box",
+      background: C.bg,
+      color: C.text,
+      border: `1px solid ${keyKind === "sk" ? C.green + "99" : C.border}`,
+      borderRadius: 3,
+      padding: "8px 9px",
+      fontSize: 12.5,
+      fontFamily: "'IBM Plex Mono',monospace",
+      outline: "none"
+    }
+  }), apiKey.trim() && /*#__PURE__*/React.createElement("button", {
+    onClick: () => saveKey(""),
+    title: "Очистити ключ",
+    style: {
+      padding: "0 12px",
+      borderRadius: 3,
+      cursor: "pointer",
+      background: "transparent",
+      border: `1px solid ${C.border}`,
+      color: C.mut,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 14
+    }
+  }, "✕")), keyKind === "sk" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 11,
+      color: C.green,
+      fontFamily: "'IBM Plex Mono',monospace",
+      lineHeight: 1.5
+    }
+  }, "✓ Секретний ключ збережено · без лімітів. Тримай файл приватним — не викладай і не пересилай."), keyKind === "pk" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 11,
+      color: C.amber,
+      fontFamily: "'IBM Plex Mono',monospace",
+      lineHeight: 1.5
+    }
+  }, "✓ Публічний ключ збережено · ліміт ~1 запит/год на IP. Для кількох портретів краще sk_-ключ."), keyKind === "other" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 11,
+      color: C.red,
+      fontFamily: "'IBM Plex Mono',monospace",
+      lineHeight: 1.5
+    }
+  }, "Схоже, це не ключ Pollinations (має починатися з pk_ або sk_)."), !keyKind && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 11,
+      color: C.faint,
+      fontFamily: "'IBM Plex Mono',monospace",
+      lineHeight: 1.5
+    }
+  }, "Без ключа працює анонімно з лімітом. Ключ зберігається лише у вашому браузері.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 10.5,
+      letterSpacing: 1,
+      color: C.mut,
+      textTransform: "uppercase",
+      marginBottom: 8
+    }
+  }, "Скільки варіантів"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap",
+      marginBottom: 14
+    }
+  }, [1, 4, 6, 9].map(n => /*#__PURE__*/React.createElement(Seg, {
+    key: n,
+    active: count === n,
+    onClick: () => setCount(n),
+    label: String(n),
+    C: C
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: doGenerate,
+    disabled: generating,
+    style: btn(C.amber, "#1a1205", generating)
+  }, generating && /*#__PURE__*/React.createElement(Spin, null), generating ? "Генерація…" : count === 1 ? "Згенерувати портрет" : `Згенерувати ${count} варіантів`), promptEn && !generating && /*#__PURE__*/React.createElement("button", {
+    onClick: copyPrompt,
+    style: {
+      padding: "11px 14px",
+      borderRadius: 4,
+      cursor: "pointer",
+      background: copied ? C.green : "transparent",
+      border: `1px solid ${copied ? C.green : C.border}`,
+      color: copied ? "#06121f" : C.mut,
+      fontFamily: "'Oswald',sans-serif",
+      fontSize: 13,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, copied ? "✓ Скопійовано" : "Копіювати промпт")), generating && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      fontSize: 13,
+      color: C.amber,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontFamily: "'IBM Plex Mono',monospace"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: C.amber,
+      display: "inline-block",
+      animation: "blink 1s infinite",
+      flexShrink: 0
+    }
+  }), "Генерація по черзі… ", Math.min(activeIdx + 1, count), " / ", count), promptEn && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 12,
+      lineHeight: 1.6,
+      color: "#cfe3d6",
+      whiteSpace: "pre-wrap",
+      background: C.bg,
+      padding: 12,
+      borderRadius: 4,
+      border: `1px solid ${C.border}`
+    }
+  }, promptEn), error && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "10px 14px",
+      background: `${C.red}15`,
+      border: `1px solid ${C.red}55`,
+      borderLeft: `3px solid ${C.red}`,
+      borderRadius: 4,
+      color: C.red,
+      fontSize: 13,
+      lineHeight: 1.55,
+      fontFamily: "'IBM Plex Mono',monospace",
+      wordBreak: "break-word"
+    }
+  }, error), variants.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 18,
+      animation: "imgfade .4s ease"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'IBM Plex Mono',monospace",
+      fontSize: 11,
+      letterSpacing: 1,
+      color: C.green,
+      textTransform: "uppercase",
+      marginBottom: 10
+    }
+  }, "Варіанти портрета · оберіть найближчий до свідчень"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
+      gap: 10
+    }
+  }, variants.map((it, i) => /*#__PURE__*/React.createElement(VariantTile, {
+    key: it.url,
+    C: C,
+    item: it,
+    index: i,
+    start: i <= activeIdx,
+    onSettled: onTileSettled
+  }))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 28,
+      paddingTop: 14,
+      borderTop: `1px solid ${C.border}`,
+      fontSize: 11.5,
+      color: C.mut,
+      lineHeight: 1.6,
+      fontFamily: "'IBM Plex Mono',monospace"
+    }
+  }, "ПРОТОТИП · поля заповнюються вручну або за нотатками свідка · генерація зображень: Pollinations AI (Flux / GPT Image / Seedream / Nano Banana)")));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>
